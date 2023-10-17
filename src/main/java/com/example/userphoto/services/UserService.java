@@ -1,10 +1,14 @@
 package com.example.userphoto.services;
 
+import com.example.userphoto.Util.UserToUserDTO;
 import com.example.userphoto.exceptions.ErrorInputFile;
+import com.example.userphoto.exceptions.ErrorUserDoesNotExist;
+import com.example.userphoto.exceptions.ErrorUserForbidden;
 import com.example.userphoto.models.*;
 import com.example.userphoto.repositories.UserRepository;
-import org.modelmapper.ModelMapper;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,78 +16,122 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Objects;
 
 @Service
+@RequiredArgsConstructor
 @Transactional
 public class UserService {
     private final UserRepository userRepository;
-
     private final PasswordEncoder passwordEncoder;
+    private final UserToUserDTO mapper;
 
-    @Autowired
-    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
-        this.userRepository = userRepository;
-        this.passwordEncoder = passwordEncoder;
-    }
 
-    private static UserDTO convertToDTO(User user) {
-        ModelMapper modelMapper = new ModelMapper();
-        return modelMapper.map(user, UserDTO.class);
-    }
-
-    private static User convertToUser(UserDTO userDTO) {
-        ModelMapper modelMapper = new ModelMapper();
-        return modelMapper.map(userDTO, User.class);
-    }
     @Transactional(readOnly = true)
+    @PreAuthorize("hasRole('ROLE_ADMIN')")
     public List<User> allUsers() {
         return userRepository.findAll();
     }
+
     @Transactional(readOnly = true)
+    @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_USER')")
     public UserDTO findUserById(Long id) {
-        return convertToDTO(userRepository.findUserById(id));
+        User user = getUser(id);
+        return mapper.toUserDTO(user);
     }
 
-    public User postUser(UserDTO userDTO) {
-        User user = convertToUser(userDTO);
+    @PreAuthorize("hasRole('ROLE_ADMIN')")
+    public User postUser(UserDTO userDTO, MultipartFile file) {
+        User user = mapper.toUser(userDTO);
+        try {
+            if (!isValid(file)){
+                throw new ErrorInputFile();
+            }
+            user.setPhoto(file.getBytes());
+        } catch (IOException e) {
+            throw new ErrorInputFile();
+        }
         user.setPassword(passwordEncoder.encode(userDTO.password()));
         user.setRole(Role.ROLE_USER);
         return userRepository.save(user);
     }
 
+    @PreAuthorize("hasRole('ROLE_USER')")
     public User changeInfo(Long id, ContactInfoOfUser contactInfo) {
-        User user = userRepository.findUserById(id);
+        User user = getUser(id);
         user.setName(contactInfo.name());
         user.setBirthDay(contactInfo.birthDay());
         return userRepository.save(user);
     }
 
+    @PreAuthorize("hasRole('ROLE_USER')")
     public User changeDetailInfo(Long id, DetailInfoOfUser detailInfo) {
-        User user = userRepository.findUserById(id);
+        User user = getUser(id);
         user.setEmail(detailInfo.email());
         user.setPhoneNumber(detailInfo.phoneNumber());
         return userRepository.save(user);
     }
 
-    public User deleteUserById(Long id) {
-        User user = userRepository.findUserById(id);
-        userRepository.delete(user);
-        return user;
-    }
-
+    @PreAuthorize("hasRole('ROLE_USER')")
     public User changePhoto(Long id, MultipartFile file) {
-        User user = userRepository.findUserById(id);
+        User user = getUser(id);
         try {
-        user.setPhoto(file.getBytes());
+            if (!isValid(file)){
+                throw new ErrorInputFile();
+            }
+            user.setPhoto(file.getBytes());
         } catch (IOException e) {
             throw new ErrorInputFile();
         }
         return userRepository.save(user);
     }
 
+    @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_USER')")
+    public User deleteUserById(Long id) {
+        User user = getUser(id);
+        userRepository.delete(user);
+        return user;
+    }
+
+    @PreAuthorize("hasRole('ROLE_USER')")
     public User deletePhoto(Long id) {
-        User user = userRepository.findUserById(id);
+        User user = getUser(id);
         user.setPhoto(null);
         return userRepository.save(user);
     }
+
+
+    private boolean isValid(MultipartFile multipartFile) {
+        boolean result = true;
+        String contentType = multipartFile.getContentType();
+        Objects.requireNonNull(contentType,"contentType must not be null!");
+        if (!isSupportedContentType(contentType)) {
+            result = false;
+        }
+        return result;
+    }
+
+    private boolean isSupportedContentType(String contentType) {
+        return contentType.equals("image/png")
+                || contentType.equals("image/jpg")
+                || contentType.equals("image/jpeg");
+    }
+
+    private User checkUserIsPresentById (Long id){
+        User user = userRepository.findUserById(id);
+        if (user == null){
+            throw new ErrorUserDoesNotExist();
+        }
+        return user;
+    }
+
+    private User getUser(Long id) {
+        String name = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user = checkUserIsPresentById(id);
+        if (!name.equals(user.getName())){
+            throw new ErrorUserForbidden();
+        }
+        return user;
+    }
+
 }

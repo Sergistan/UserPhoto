@@ -1,7 +1,13 @@
 package com.example.userphoto.models;
 
-import java.util.Date;
+import jakarta.validation.constraints.*;
 
-public record UserDTO(String name, String password, Date birthDay, String email, String phoneNumber, byte[] photo) {}
+import java.time.LocalDate;
+
+public record UserDTO(@NotBlank @Size(min = 3, max = 15) String name,
+                      @NotBlank @Size(min = 3, max = 60) String password,
+                      @PastOrPresent @NotNull LocalDate birthDay,
+                      @Email @NotBlank String email,
+                      @Pattern(regexp = "^((\\+7|7|8)+([0-9]){10})$") @NotBlank String phoneNumber) {}
 
 
