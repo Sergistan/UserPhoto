@@ -101,7 +101,7 @@ public class UserService {
     }
 
 
-    private boolean isValid(MultipartFile multipartFile) {
+    public boolean isValid(MultipartFile multipartFile) {
         boolean result = true;
         String contentType = multipartFile.getContentType();
         Objects.requireNonNull(contentType,"contentType must not be null!");
@@ -111,13 +111,13 @@ public class UserService {
         return result;
     }
 
-    private boolean isSupportedContentType(String contentType) {
+    public boolean isSupportedContentType(String contentType) {
         return contentType.equals("image/png")
                 || contentType.equals("image/jpg")
                 || contentType.equals("image/jpeg");
     }
 
-    private User checkUserIsPresentById (Long id){
+    public User checkUserIsPresentById (Long id){
         User user = userRepository.findUserById(id);
         if (user == null){
             throw new ErrorUserDoesNotExist();
@@ -125,7 +125,7 @@ public class UserService {
         return user;
     }
 
-    private User getUser(Long id) {
+    public User getUser(Long id) {
         String name = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = checkUserIsPresentById(id);
         if (!name.equals(user.getName())){

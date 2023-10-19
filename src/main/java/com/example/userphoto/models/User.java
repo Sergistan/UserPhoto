@@ -2,10 +2,7 @@ package com.example.userphoto.models;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -20,6 +17,7 @@ import java.util.Collections;
 @Getter
 @Setter
 @Entity
+@ToString
 @Table(name = "users")
 public class User implements UserDetails {
     @Id
@@ -58,6 +56,23 @@ public class User implements UserDetails {
 
     @Enumerated(value = EnumType.STRING)
     private Role role;
+
+    @Override
+    public int hashCode() {
+        return 13;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (obj == null)
+            return false;
+        if (getClass() != obj.getClass())
+            return false;
+        User user = (User) obj;
+        return id != null && id.equals(user.getId());
+    }
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
