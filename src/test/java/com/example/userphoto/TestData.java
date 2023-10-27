@@ -33,14 +33,4 @@ public class TestData {
             "".getBytes(),
             Role.ROLE_USER);
 
-
-
-    public static final User USER_WITH_ROLE_ADMIN_WITHOUT_PHOTO = new User(1L,
-            "RoleUser",
-            "12345",
-            LocalDate.now(),
-            "RoleUser@mail.com",
-            "+79811234567",
-            null,
-            Role.ROLE_USER);
 }

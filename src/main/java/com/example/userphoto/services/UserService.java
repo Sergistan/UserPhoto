@@ -7,7 +7,7 @@ import com.example.userphoto.exceptions.ErrorUserForbidden;
 import com.example.userphoto.models.*;
 import com.example.userphoto.repositories.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -28,19 +28,16 @@ public class UserService {
 
 
     @Transactional(readOnly = true)
-    @PreAuthorize("hasRole('ROLE_ADMIN')")
     public List<User> allUsers() {
         return userRepository.findAll();
     }
 
     @Transactional(readOnly = true)
-    @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_USER')")
     public UserDTO findUserById(Long id) {
         User user = getUser(id);
         return mapper.toUserDTO(user);
     }
 
-    @PreAuthorize("hasRole('ROLE_ADMIN')")
     public User postUser(UserDTO userDTO, MultipartFile file) {
         User user = mapper.toUser(userDTO);
         try {
@@ -56,7 +53,6 @@ public class UserService {
         return userRepository.save(user);
     }
 
-    @PreAuthorize("hasRole('ROLE_USER')")
     public User changeInfo(Long id, ContactInfoOfUser contactInfo) {
         User user = getUser(id);
         user.setName(contactInfo.name());
@@ -64,7 +60,6 @@ public class UserService {
         return userRepository.save(user);
     }
 
-    @PreAuthorize("hasRole('ROLE_USER')")
     public User changeDetailInfo(Long id, DetailInfoOfUser detailInfo) {
         User user = getUser(id);
         user.setEmail(detailInfo.email());
@@ -72,7 +67,6 @@ public class UserService {
         return userRepository.save(user);
     }
 
-    @PreAuthorize("hasRole('ROLE_USER')")
     public User changePhoto(Long id, MultipartFile file) {
         User user = getUser(id);
         try {
@@ -86,14 +80,12 @@ public class UserService {
         return userRepository.save(user);
     }
 
-    @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_USER')")
     public User deleteUserById(Long id) {
         User user = getUser(id);
         userRepository.delete(user);
         return user;
     }
 
-    @PreAuthorize("hasRole('ROLE_USER')")
     public User deletePhoto(Long id) {
         User user = getUser(id);
         user.setPhoto(null);
@@ -101,7 +93,7 @@ public class UserService {
     }
 
 
-    public boolean isValid(MultipartFile multipartFile) {
+    private boolean isValid(MultipartFile multipartFile) {
         boolean result = true;
         String contentType = multipartFile.getContentType();
         Objects.requireNonNull(contentType,"contentType must not be null!");
@@ -111,13 +103,13 @@ public class UserService {
         return result;
     }
 
-    public boolean isSupportedContentType(String contentType) {
+    private boolean isSupportedContentType(String contentType) {
         return contentType.equals("image/png")
                 || contentType.equals("image/jpg")
                 || contentType.equals("image/jpeg");
     }
 
-    public User checkUserIsPresentById (Long id){
+    private User checkUserIsPresentById (Long id){
         User user = userRepository.findUserById(id);
         if (user == null){
             throw new ErrorUserDoesNotExist();
@@ -125,10 +117,11 @@ public class UserService {
         return user;
     }
 
-    public User getUser(Long id) {
-        String name = SecurityContextHolder.getContext().getAuthentication().getName();
+    private User getUser(Long id) {
         User user = checkUserIsPresentById(id);
-        if (!name.equals(user.getName())){
+        String name = SecurityContextHolder.getContext().getAuthentication().getName();
+        if (!name.equals(user.getName()) &&
+                user.getAuthorities().contains(new SimpleGrantedAuthority(Role.ROLE_ADMIN.name())) ){
             throw new ErrorUserForbidden();
         }
         return user;

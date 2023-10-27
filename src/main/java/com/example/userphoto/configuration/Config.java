@@ -74,8 +74,4 @@ public class Config {
         };
     }
 
-    // TODO: 2) Добавить liquibase
-    // TODO: 3) Добавить тесты
-
-
 }

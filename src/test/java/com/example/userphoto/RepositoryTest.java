@@ -1,17 +1,17 @@
 package com.example.userphoto;
 
+import com.example.userphoto.models.Role;
+import com.example.userphoto.models.User;
 import com.example.userphoto.repositories.UserRepository;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 
+import java.time.LocalDate;
 import java.util.Optional;
 
-import static com.example.userphoto.TestData.USER_WITH_ROLE_ADMIN;
-import static com.example.userphoto.TestData.USER_WITH_ROLE_USER;
 import static org.junit.jupiter.api.Assertions.*;
 
 @DataJpaTest
@@ -21,34 +21,59 @@ public class RepositoryTest {
     @Autowired
     private UserRepository userRepository;
 
-    @BeforeEach
-    void setUp() {
-        userRepository.save(USER_WITH_ROLE_ADMIN);
-    }
 
     @Test
     void findUserById() {
-        assertEquals(USER_WITH_ROLE_ADMIN, userRepository.findUserById(1L));
+        User admin = createAdmin();
+        assertEquals(admin, userRepository.findUserById(1L));
     }
 
     @Test
     void findUserByName() {
-        assertEquals(Optional.of(USER_WITH_ROLE_ADMIN), userRepository.findUserByName(USER_WITH_ROLE_ADMIN.getName()));
+        User admin = createAdmin();
+        userRepository.save(admin);
+        assertEquals(Optional.of(admin), userRepository.findUserByName(admin.getName()));
     }
 
     @Test
     void notFindUserById() {
-        assertNull(userRepository.findUserById(0L));
+        User user = createUser();
+        assertNull(userRepository.findUserById(user.getId()));
     }
 
     @Test
     void notFindUserByName() {
-        assertTrue(userRepository.findUserByName(USER_WITH_ROLE_USER.getName()).isEmpty());
+        User user = createUser();
+        assertTrue(userRepository.findUserByName(user.getName()).isEmpty());
     }
 
     @AfterEach
     void deleteSetUp() {
-        userRepository.delete(USER_WITH_ROLE_ADMIN);
+        User admin = createAdmin();
+        userRepository.delete(admin);
+    }
+
+
+    private User createUser() {
+        return new User(1000L,
+                "RoleUser",
+                "12345",
+                LocalDate.now(),
+                "RoleUser@mail.com",
+                "+79811234567",
+                "".getBytes(),
+                Role.ROLE_USER);
+    }
+
+    private User createAdmin() {
+        return new User(1L,
+                "RoleAdmin",
+                "12345",
+                LocalDate.now(),
+                "RoleAdmin@mail.com",
+                "+79811234567",
+                "".getBytes(),
+                Role.ROLE_ADMIN);
     }
 
 }
